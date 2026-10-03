@@ -43,7 +43,7 @@ export const updateItem = async (id, data) => {
   return true;
 };
 
-// Aturan 2.4b: Item tidak boleh dihapus kalau sudah dipakai di pesanan submitted atau fulfilled
+// Aturan: Item tidak boleh dihapus kalau sudah dipakai di pesanan submitted atau fulfilled
 export const deleteItem = async (id) => {
   const orders = getOrdersDb();
   const isUsed = orders.some(
@@ -78,21 +78,26 @@ export const getOrderById = async (id) => {
   return getOrdersDb().find((o) => o.id === id);
 };
 
-// Aturan 2.4c & 2.4d: Validasi Qty dan Snapshot Harga
+// Validasi saat membuat pesanan (Draft)
 export const createOrder = async (payload) => {
   const items = getItemsDb();
   
   if (!payload.lines || payload.lines.length === 0) {
-    throw new Error("Penolakan: Pesanan minimal harus memiliki 1 baris.");
+    throw new Error("Pesanan minimal harus memiliki 1 barang.");
   }
 
   const processedLines = payload.lines.map((l) => {
     if (l.qty <= 0) {
-      throw new Error("Penolakan: Qty harus lebih besar dari 0.");
+      throw new Error("Jumlah pesanan harus lebih besar dari 0.");
     }
     const item = items.find((i) => i.id === l.itemId);
     if (!item) {
-      throw new Error("Penolakan: Item tidak ditemukan.");
+      throw new Error("Barang yang dipilih tidak ditemukan di sistem.");
+    }
+
+    // Pesan ramah saat stok kurang di mode Draft
+    if (l.qty > item.stock) {
+      throw new Error(`Stok ${item.name} tinggal ${item.stock}, tidak bisa pesan ${l.qty}. Pemesanan dibatalkan.`);
     }
 
     return {
@@ -116,6 +121,7 @@ export const createOrder = async (payload) => {
   return newOrder;
 };
 
+// Validasi saat mengubah pesanan (Draft)
 export const updateOrder = async (id, payload) => {
   const orders = getOrdersDb();
   const order = orders.find((o) => o.id === id);
@@ -123,14 +129,18 @@ export const updateOrder = async (id, payload) => {
   if (!order) throw new Error("Pesanan tidak ditemukan.");
   
   if (order.status !== "draft") {
-    throw new Error("Penolakan: Isi pesanan tidak boleh diubah karena sudah melewati status draft.");
+    throw new Error("Pesanan ini sudah diproses dan tidak bisa diubah isinya.");
   }
 
   const items = getItemsDb();
   const processedLines = payload.lines.map((l) => {
-    if (l.qty <= 0) throw new Error("Penolakan: Qty harus > 0.");
+    if (l.qty <= 0) throw new Error("Jumlah pesanan harus lebih besar dari 0.");
     const item = items.find((i) => i.id === l.itemId);
-    if (!item) throw new Error("Penolakan: Item tidak valid.");
+    if (!item) throw new Error("Barang tidak valid.");
+
+    if (l.qty > item.stock) {
+      throw new Error(`Stok ${item.name} tinggal ${item.stock}, tidak bisa pesan ${l.qty}. Perubahan dibatalkan.`);
+    }
 
     return {
       itemId: l.itemId,
@@ -147,7 +157,7 @@ export const updateOrder = async (id, payload) => {
   return true;
 };
 
-// Aturan 2.4a & 2.4e: Validasi Stok Mutlak saat Fulfilled & Proteksi Pengurangan Ganda
+// Validasi saat mengubah status (Fulfilled / Cancelled)
 export const updateOrderStatus = async (orderId, newStatus) => {
   const orders = getOrdersDb();
   const order = orders.find((o) => o.id === orderId);
@@ -158,17 +168,17 @@ export const updateOrderStatus = async (orderId, newStatus) => {
 
   if (newStatus === "fulfilled") {
     if (oldStatus === "fulfilled") {
-      throw new Error("Penolakan: Pesanan ini sudah berstatus fulfilled. Stok tidak boleh dikurangi dua kali.");
+      throw new Error("Pesanan ini sudah berstatus selesai, stok tidak boleh dikurangi dua kali.");
     }
 
-    // Validasi mutlak stok cukup saat fulfilled (Aturan 2.4a)
+    // Pengecekan akhir stok saat dikonfirmasi
     for (const line of order.lines) {
       const item = items.find((i) => i.id === line.itemId);
       if (!item) {
-        throw new Error(`Penolakan: Item dengan ID ${line.itemId} sudah dihapus.`);
+        throw new Error(`Barang dengan ID ${line.itemId} sudah dihapus dari daftar barang.`);
       }
       if (line.qty > item.stock) {
-        throw new Error(`PENOLAKAN (Aturan 2.4a): Stok "${item.name}" tidak cukup!\nSisa stok: ${item.stock}, diminta: ${line.qty}.\nSeluruh operasi dibatalkan.`);
+        throw new Error(`Stok ${item.name} tinggal ${item.stock}, tidak bisa diselesaikan karena kurang dari pesanan (${line.qty}).`);
       }
     }
 

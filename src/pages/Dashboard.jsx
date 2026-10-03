@@ -1,6 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect } from "react";
 import { fetchItems, getOrders } from "../services/mockApi";
+import { formatRP } from "../utils/formatters"; // Impor helper formatter
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -11,6 +12,7 @@ export default function Dashboard() {
     submittedOrders: 0,
     fulfilledOrders: 0,
     cancelledOrders: 0,
+    totalRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -20,9 +22,7 @@ export default function Dashboard() {
         const items = await fetchItems();
         const orders = await getOrders();
 
-        // Hitung metrik berdasarkan data asli
         const totalItems = items.length;
-        // Misal barang dengan stok di bawah 10 dianggap menipis
         const lowStockCount = items.filter((i) => i.stock <= 10).length;
         
         const totalOrders = orders.length;
@@ -30,6 +30,11 @@ export default function Dashboard() {
         const submittedOrders = orders.filter((o) => o.status === "submitted").length;
         const fulfilledOrders = orders.filter((o) => o.status === "fulfilled").length;
         const cancelledOrders = orders.filter((o) => o.status === "cancelled").length;
+
+        // Hitung total uang masuk dari pesanan yang berstatus 'fulfilled'
+        const totalRevenue = orders
+          .filter((o) => o.status === "fulfilled")
+          .reduce((sum, o) => sum + (o.total || 0), 0);
 
         setStats({
           totalItems,
@@ -39,6 +44,7 @@ export default function Dashboard() {
           submittedOrders,
           fulfilledOrders,
           cancelledOrders,
+          totalRevenue,
         });
       } catch (error) {
         console.error("Gagal memuat data dashboard:", error);
@@ -58,7 +64,7 @@ export default function Dashboard() {
     <div className="p-8 w-full max-w-5xl">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Dashboard Pos Kawal Stok</h2>
-        <p className="text-sm text-gray-500">Ringkasan inventaris dan status pesanan secara real-time.</p>
+        <p className="text-sm text-gray-500">Ringkasan inventaris, status pesanan, dan subtotal uang masuk secara real-time.</p>
       </div>
 
       {/* Kartu Statistik Utama */}
@@ -82,6 +88,13 @@ export default function Dashboard() {
           <p className="text-sm font-medium text-gray-500 mb-1">Pesanan Selesai (Fulfilled)</p>
           <h3 className="text-3xl font-bold text-green-600">{stats.fulfilledOrders}</h3>
         </div>
+      </div>
+
+      {/* Kartu Khusus Total Uang Masuk Menggunakan formatRP */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
+        <p className="text-sm font-medium text-gray-500 mb-1">Total Uang Masuk (Fulfilled)</p>
+        <h3 className="text-3xl font-bold text-green-600">{formatRP(stats.totalRevenue)}</h3>
+        <p className="text-xs text-gray-400 mt-1">Otomatis berkurang/tidak dihitung jika pesanan fulfilled dibatalkan (cancelled).</p>
       </div>
 
       {/* Rincian Status Pesanan */}
