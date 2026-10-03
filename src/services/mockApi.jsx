@@ -11,9 +11,9 @@ const getItemsDb = () => {
   }
   // Data default awal jika localStorage kosong
   const initial = [
-    { id: "ITM-001", name: "Beras", price: 15000, stock: 100, is_promo: false },
-    { id: "ITM-002", name: "Gula", price: 18000, stock: 50, is_promo: false },
-    { id: "ITM-003", name: "Mi Instan", price: 3500, stock: 200, is_promo: true },
+    { id: "ITM-001", name: "Beras", price: 15000, stock: 100, is_promo: false, image: "/beras.png" },
+    { id: "ITM-002", name: "Gula", price: 18000, stock: 50, is_promo: false, image: "/gula.png" },
+    { id: "ITM-003", name: "Mie Instan", price: 3500, stock: 200, is_promo: true, image: "/mie-instan.png" },
   ];
   localStorage.setItem(DB_KEY, JSON.stringify(initial));
   return initial;

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { fetchItems, createOrder, updateOrder, getOrderById } from "../services/mockApi";
 import { calculateLineTotal } from "../utils/calculator";
+import { formatRP } from "../utils/formatters";
 
 export default function OrderForm({ orderId, onBack, onSuccess }) {
   const [availableItems, setAvailableItems] = useState([]);
@@ -150,7 +151,9 @@ export default function OrderForm({ orderId, onBack, onSuccess }) {
               >
                 <option value="" disabled>Pilih barang...</option>
                 {availableItems.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
+                  <option key={item.id} value={item.id}>
+                    {item.name} - Stok: {item.stock} - {formatRP(item.price)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -162,10 +165,10 @@ export default function OrderForm({ orderId, onBack, onSuccess }) {
               <thead className="bg-gray-50 text-gray-700 border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Baris</th>
-                  <th className="px-4 py-3 font-semibold text-center w-32">qty</th>
-                  <th className="px-4 py-3 font-semibold text-right">unit_price</th>
-                  <th className="px-4 py-3 font-semibold text-center">diskon</th>
-                  <th className="px-4 py-3 font-semibold text-right">line_total</th>
+                  <th className="px-4 py-3 font-semibold text-center w-32">Qty</th>
+                  <th className="px-4 py-3 font-semibold text-right">Harga Satuan</th>
+                  <th className="px-4 py-3 font-semibold text-center">Diskon</th>
+                  <th className="px-4 py-3 font-semibold text-right">Subtotal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -178,8 +181,20 @@ export default function OrderForm({ orderId, onBack, onSuccess }) {
                 ) : (
                   enrichedLines.map((line, index) => (
                     <tr key={index} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-medium text-gray-900 capitalize">
-                        {line.itemDetail?.name || "Barang tidak ditemukan"} {line.itemDetail?.is_promo && "Promo"}
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        <div className="flex items-center gap-3">
+                          <img 
+                            src={line.itemDetail?.image || "/hero.png"} 
+                            alt={line.itemDetail?.name || "Item"} 
+                            className="w-10 h-10 object-cover rounded-md border border-gray-200" 
+                          />
+                          <div>
+                            <h4 className="font-semibold text-sm text-gray-900">
+                              {line.itemDetail?.name || "Barang tidak ditemukan"} {line.itemDetail?.is_promo && <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium ml-1">Promo</span>}
+                            </h4>
+                            <p className="text-xs text-gray-500">Stok: {line.itemDetail?.stock ?? 0}</p>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center">
@@ -193,13 +208,13 @@ export default function OrderForm({ orderId, onBack, onSuccess }) {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {line.itemDetail?.price?.toString() || 0}
+                        {formatRP(line.itemDetail?.price || 0)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {line.discountPercent}%
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
-                        {line.lineTotal?.toString() || 0}
+                        {formatRP(line.lineTotal || 0)}
                       </td>
                     </tr>
                   ))
@@ -208,8 +223,8 @@ export default function OrderForm({ orderId, onBack, onSuccess }) {
               <tfoot className="bg-gray-50 font-bold border-t border-gray-200 text-gray-900">
                 <tr>
                   <td colSpan="3"></td>
-                  <td className="px-4 py-4 text-center">total</td>
-                  <td className="px-4 py-4 text-right">{orderTotal.toString()}</td>
+                  <td className="px-4 py-4 text-center">Total</td>
+                  <td className="px-4 py-4 text-right text-green-600">{formatRP(orderTotal)}</td>
                 </tr>
               </tfoot>
             </table>
